@@ -1,0 +1,198 @@
+
+<!DOCTYPE html>
+<html lang="fil">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ministeryo Tracker</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; padding: 20px;
+      font-family: Arial, sans-serif;
+      background: #f1f5f9; color: #172033;
+    }
+    header {
+      background: #34684d; color: white;
+      padding: 22px; border-radius: 16px;
+      margin-bottom: 20px;
+    }
+    h1 { font-size: 25px; margin: 0 0 8px; }
+    header p { margin: 0; }
+    .card {
+      background: white; padding: 18px;
+      border-radius: 14px; margin-bottom: 16px;
+      box-shadow: 0 2px 8px #0000000d;
+    }
+    h2 { font-size: 19px; margin-top: 0; }
+    label {
+      display: block; font-weight: bold;
+      margin: 14px 0 6px;
+    }
+    input, textarea {
+      width: 100%; padding: 12px;
+      border: 1px solid #cbd5e1; border-radius: 8px;
+      font-size: 16px; background: white;
+    }
+    button {
+      width: 100%; padding: 13px; margin-top: 12px;
+      border: 0; border-radius: 9px;
+      background: #34684d; color: white;
+      font-size: 16px; font-weight: bold;
+    }
+    .secondary { background: #64748b; }
+    .entry {
+      border-bottom: 1px solid #e2e8f0;
+      padding: 12px 0; overflow-wrap: anywhere;
+    }
+    .entry:last-child { border-bottom: 0; }
+    .muted { color: #64748b; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Ministeryo Tracker</h1>
+    <p>Itala at subaybayan ang iyong ministeryo.</p>
+  </header>
+
+  <section class="card">
+    <h2>Bagong Ulat</h2>
+    <form id="reportForm">
+      <label for="date">Petsa</label>
+      <input id="date" type="date" required>
+
+      <label for="hours">Oras</label>
+      <input id="hours" type="number" min="0" step="0.25"
+        placeholder="Hal. 2.5" required>
+
+      <label for="placements">Mga Naipamahaging Publikasyon</label>
+      <input id="placements" type="number" min="0" value="0">
+
+      <label for="videos">Mga Naipakitang Video</label>
+      <input id="videos" type="number" min="0" value="0">
+
+      <label for="visits">Mga Return Visit</label>
+      <input id="visits" type="number" min="0" value="0">
+
+      <label for="studies">Mga Bible Study</label>
+      <input id="studies" type="number" min="0" value="0">
+
+      <label for="notes">Mga Tala (opsyonal)</label>
+      <textarea id="notes" rows="3"
+        placeholder="Karagdagang detalye..."></textarea>
+
+      <button type="submit">I-save ang Ulat</button>
+    </form>
+  </section>
+
+  <section class="card">
+    <h2>Mga Naitalang Ulat</h2>
+    <p id="summary" class="muted">Kabuuang oras: 0</p>
+    <div id="reports"></div>
+    <button id="exportBtn" type="button">I-download ang Backup</button>
+    <button id="clearBtn" type="button" class="secondary">
+      Burahin ang Lahat ng Ulat
+    </button>
+  </section>
+
+  <script>
+    const $ = id => document.getElementById(id);
+    const KEY = "ministeryoTrackerReports";
+    let reports = [];
+
+    try {
+      reports = JSON.parse(localStorage.getItem(KEY) || "[]");
+      if (!Array.isArray(reports)) reports = [];
+    } catch (e) {
+      reports = [];
+    }
+
+    $("date").value = new Date().toLocaleDateString("en-CA");
+
+    function save() {
+      localStorage.setItem(KEY, JSON.stringify(reports));
+      render();
+    }
+
+    function render() {
+      const total = reports.reduce((sum, r) => sum + r.hours, 0);
+      $("summary").textContent =
+        "Bilang ng ulat: " + reports.length +
+        " | Kabuuang oras: " + total.toFixed(2);
+
+      $("reports").replaceChildren();
+
+      if (!reports.length) {
+        const p = document.createElement("p");
+        p.className = "muted";
+        p.textContent = "Wala pang naitatala. Magdagdag ng unang ulat.";
+        $("reports").appendChild(p);
+        return;
+      }
+
+      [...reports].reverse().forEach(r => {
+        const div = document.createElement("div");
+        div.className = "entry";
+        const title = document.createElement("strong");
+        title.textContent = r.date + " — " + r.hours + " oras";
+        const detail = document.createElement("p");
+        detail.textContent =
+          "Publikasyon: " + r.placements +
+          " | Video: " + r.videos +
+          " | Return Visit: " + r.visits +
+          " | Bible Study: " + r.studies;
+        const notes = document.createElement("p");
+        notes.textContent = r.notes || "";
+        div.append(title, detail, notes);
+        $("reports").appendChild(div);
+      });
+    }
+
+    $("reportForm").addEventListener("submit", e => {
+      e.preventDefault();
+      const hours = Number($("hours").value);
+      if (!Number.isFinite(hours) || hours < 0) return;
+
+      reports.push({
+        date: $("date").value,
+        hours,
+        placements: Number($("placements").value) || 0,
+        videos: Number($("videos").value) || 0,
+        visits: Number($("visits").value) || 0,
+        studies: Number($("studies").value) || 0,
+        notes: $("notes").value.trim()
+      });
+      save();
+      $("reportForm").reset();
+      $("date").value = new Date().toLocaleDateString("en-CA");
+      $("placements").value = 0;
+      $("videos").value = 0;
+      $("visits").value = 0;
+      $("studies").value = 0;
+      alert("Nai-save ang ulat sa device na ito.");
+    });
+
+    $("exportBtn").addEventListener("click", () => {
+      const blob = new Blob(
+        [JSON.stringify(reports, null, 2)],
+        {type: "application/json"}
+      );
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "ministeryo-backup.json";
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    $("clearBtn").addEventListener("click", () => {
+      if (confirm("Sigurado ka bang buburahin ang lahat ng ulat?")) {
+        reports = [];
+        save();
+      }
+    });
+
+    render();
+  </script>
+</body>
+</html>
